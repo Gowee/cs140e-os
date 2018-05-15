@@ -59,6 +59,7 @@ pub extern "C" fn kmain() {
         led.on();
         let byte = mu.read_byte();
         led.off();
+        timer::spin_sleep_ms(100);
         mu.write_byte(byte);
         mu.write_str("<-").unwrap();
     }

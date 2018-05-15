@@ -105,7 +105,7 @@ impl Gpio<Uninitialized> {
         let nfsel = self.pin as usize / 10;
         let nbit = (self.pin as usize % 10) * 3;
         let old = self.registers.FSEL[nfsel].read();
-        self.registers.FSEL[nfsel].write((old | (0b111 << nbit)) & (function as u32) << nbit) ;
+        self.registers.FSEL[nfsel].write((old & !(0b111 << nbit)) | (function as u32) << nbit) ;
         self.transition()
     }
 
