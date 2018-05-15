@@ -1,31 +1,65 @@
-#![feature(compiler_builtins_lib, lang_items, asm, pointer_methods)]
-#![no_builtins]
-#![no_std]
+#![feature(lang_items)]
+#![feature(core_intrinsics)]
+#![feature(const_fn)]
+#![feature(asm)]
+#![feature(optin_builtin_traits)]
+#![feature(decl_macro)]
+#![feature(repr_align)]
+#![feature(attr_literals)]
+#![feature(never_type)]
+#![feature(ptr_internals)]
 
-extern crate compiler_builtins;
 extern crate pi;
-
-use pi::timer::spin_sleep_ms;
-use pi::gpio::Gpio;
+extern crate stack_vec;
 
 pub mod lang_items;
+pub mod mutex;
+pub mod console;
+pub mod shell;
 
-// const GPIO_BASE: usize = 0x3F000000 + 0x200000;
-// 
-// const GPIO_FSEL1: *mut u32 = (GPIO_BASE + 0x04) as *mut u32;
-// const GPIO_SET0: *mut u32 = (GPIO_BASE + 0x1C) as *mut u32;
-// const GPIO_CLR0: *mut u32 = (GPIO_BASE + 0x28) as *mut u32;
+use std::fmt::Write;
 
+use pi::*;
+
+struct LED {
+    pin: gpio::Gpio<gpio::Output>,
+}
+
+impl LED {
+    fn new(pin: u8) -> LED {
+        LED {
+            pin: gpio::Gpio::new(pin).into_output(),
+        }
+    }
+
+    fn on(&mut self) {
+        self.pin.set()
+    }
+
+    fn off(&mut self) {
+        self.pin.clear()
+    }
+
+    fn blink_for(&mut self, duration: u64) {
+        self.on();
+        pi::timer::spin_sleep_ms(duration);
+        self.off();
+        pi::timer::spin_sleep_ms(duration);
+    }
+}
 
 #[no_mangle]
-pub unsafe extern "C" fn kmain() {
-    // STEP 1: Set GPIO Pin 16 as output.
-    let mut pin16 = Gpio::new(16).into_output();
-    // STEP 2: Continuously set and clear GPIO 16.
+pub extern "C" fn kmain() {
+    let mut led = LED::new(16);
+    for _ in 0..3 {
+        led.blink_for(300);
+    }
+    let mut mu = pi::uart::MiniUart::new();
     loop {
-        pin16.set();
-        spin_sleep_ms(500);
-        pin16.clear();
-        spin_sleep_ms(500);
+        led.on();
+        let byte = mu.read_byte();
+        led.off();
+        mu.write_byte(byte);
+        mu.write_str("<-").unwrap();
     }
 }
