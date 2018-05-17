@@ -17,9 +17,7 @@ pub mod mutex;
 pub mod console;
 pub mod shell;
 
-use std::fmt::Write;
-
-use pi::*;
+use pi::gpio;
 
 struct LED {
     pin: gpio::Gpio<gpio::Output>,
@@ -27,9 +25,7 @@ struct LED {
 
 impl LED {
     fn new(pin: u8) -> LED {
-        LED {
-            pin: gpio::Gpio::new(pin).into_output(),
-        }
+        LED { pin: gpio::Gpio::new(pin).into_output() }
     }
 
     fn on(&mut self) {
@@ -54,13 +50,8 @@ pub extern "C" fn kmain() {
     for _ in 0..3 {
         led.blink_for(300);
     }
-    let mut mu = pi::uart::MiniUart::new();
-    loop {
-        led.on();
-        let byte = mu.read_byte();
-        led.off();
-        timer::spin_sleep_ms(100);
-        mu.write_byte(byte);
-        mu.write_str("<-").unwrap();
-    }
+    shell::shell("> ");
+    // for _ in 0.. {
+    //     led.blink_for(500);
+    // }
 }
