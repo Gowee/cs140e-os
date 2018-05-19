@@ -63,10 +63,11 @@ impl LED {
 #[no_mangle]
 #[cfg(not(test))]
 pub extern "C" fn kmain() {
-    ALLOCATOR.initialize();
     let mut led = LED::new(16);
     for _ in 0..3 {
         led.blink_for(300);
     }
+    Err::<(), ()>(()).unwrap();
+    //ALLOCATOR.initialize();
     shell::shell("> ");
 }
