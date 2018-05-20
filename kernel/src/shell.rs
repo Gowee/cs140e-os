@@ -1,6 +1,7 @@
 use stack_vec::StackVec;
 use console::{kprint, kprintln, CONSOLE};
 use std;
+use pi;
 
 /// Error type for `Command` parse failures.
 #[derive(Debug)]
@@ -110,7 +111,12 @@ pub fn shell(prefix: &str) -> ! {
                             kprint!("{} ", arg);
                         }
                         kprintln!();
-                    }
+                    },
+                    "atags" => {
+                        for atag in pi::atags::Atags::get() {
+                            kprintln!("{:#?}", atag)
+                        }
+                    },
                     _ => {
                         kprintln!("unknown command: {command}", command = command.path());
                     }

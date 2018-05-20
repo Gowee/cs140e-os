@@ -67,7 +67,7 @@ pub extern "C" fn kmain() {
     for _ in 0..3 {
         led.blink_for(300);
     }
-    Err::<(), ()>(()).unwrap();
     //ALLOCATOR.initialize();
+
     shell::shell("> ");
 }
