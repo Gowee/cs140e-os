@@ -1,5 +1,5 @@
 use atags::raw;
-use std::{slice, str};
+use core::{slice, str};
 
 pub use atags::raw::{Core, Mem};
 
