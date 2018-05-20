@@ -67,7 +67,19 @@ pub extern "C" fn kmain() {
     for _ in 0..3 {
         led.blink_for(300);
     }
-    //ALLOCATOR.initialize();
-    //String::from("Hi");
+    ALLOCATOR.initialize();
+
+    {
+    use console::{kprint, kprintln};
+    let strtest = String::from("Hi");
+    kprintln!("{}", strtest);
+    pi::timer::spin_sleep_ms(1000);
+    let mut v = vec![];
+    for i in 0..1000 {
+        v.push(i);
+        kprintln!("{:?}", v);
+    }
+    }
+
     shell::shell("> ");
 }
