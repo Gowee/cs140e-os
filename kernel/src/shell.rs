@@ -117,6 +117,10 @@ pub fn shell(prefix: &str) -> ! {
                             kprintln!("{:#?}", atag)
                         }
                     },
+                    "memmap" => {
+                        use allocator;
+                        kprintln!("{:#?}", allocator::memory_map());
+                    },
                     _ => {
                         kprintln!("unknown command: {command}", command = command.path());
                     }

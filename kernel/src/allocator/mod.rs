@@ -86,8 +86,13 @@ extern "C" {
 /// system if it can be determined. If it cannot, `None` is returned.
 ///
 /// This function is expected to return `Some` under all normal cirumstances.
-fn memory_map() -> Option<(usize, usize)> {
+pub fn memory_map() -> Option<(usize, usize)> {
     let binary_end = unsafe { (&_end as *const u8) as u32 };
-
-    unimplemented!("memory map fetch")
+    use pi::atags::*;
+    for atag in Atags::get() {
+        if let Atag::Mem(mem) = atag {
+            return Some((binary_end as usize, (mem.start + mem.size) as usize))
+        }
+    }
+    None
 }

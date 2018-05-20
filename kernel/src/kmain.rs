@@ -68,6 +68,6 @@ pub extern "C" fn kmain() {
         led.blink_for(300);
     }
     //ALLOCATOR.initialize();
-
+    //String::from("Hi");
     shell::shell("> ");
 }
