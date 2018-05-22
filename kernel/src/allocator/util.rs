@@ -24,12 +24,37 @@ pub fn align_up(addr: usize, align: usize) -> usize {
     }
 }
 
-fn is_power_of_two(number: usize) -> bool {
+pub fn is_power_of_two(number: usize) -> bool {
     number & (number - 1) == 0
 }
 
 fn panic_if_not_power_of_two(number: usize) {
     if !is_power_of_two(number) {
         panic!("Wrong alignment size: {}! It can only be a power of two.", number);
+    }
+}
+
+pub fn log2(number: usize) -> usize {
+    if number == 0 {
+        panic!("attempt to calculate logarithm with zero");
+    }
+    let mut number = number;
+    let mut log = 0;
+    while {
+        number = number >> 1;
+        number > 0
+    } {
+        log += 1;
+    }
+    log
+}
+
+pub fn log2_up(number: usize) -> usize {
+    let log = log2(number);
+    if is_power_of_two(number) {
+        log
+    }
+    else {
+        log + 1 // round up
     }
 }

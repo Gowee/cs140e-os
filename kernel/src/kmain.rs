@@ -8,6 +8,8 @@
 #![feature(attr_literals)]
 #![feature(exclusive_range_pattern)]
 #![feature(alloc, allocator_api, global_allocator)]
+#![feature(pointer_methods)]
+#![feature(i128_type)]
 
 #[macro_use]
 #[allow(unused_imports)]
@@ -68,18 +70,6 @@ pub extern "C" fn kmain() {
         led.blink_for(300);
     }
     ALLOCATOR.initialize();
-
-    {
-    use console::{kprint, kprintln};
-    let strtest = String::from("Hi");
-    kprintln!("{}", strtest);
-    pi::timer::spin_sleep_ms(1000);
-    let mut v = vec![];
-    for i in 0..1000 {
-        v.push(i);
-        kprintln!("{:?}", v);
-    }
-    }
 
     shell::shell("> ");
 }

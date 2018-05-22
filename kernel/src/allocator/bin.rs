@@ -1,19 +1,55 @@
+use std;
 use std::fmt;
 use alloc::heap::{AllocErr, Layout};
 
 use allocator::util::*;
 use allocator::linked_list::LinkedList;
 
+const BINS: usize = 30; // enough for RPi3B of which RAM < 1G
+const BIN_OFFSET: usize = 3; // i.e. minimum bin level
+// SHOULD BE >= `log2(size_of::<usize>() / 8)`
+// in order for `LinkedList` to work
+// minimum bin size: `2usize.pow(BIN_OFFSET)`
+const MAX_ALIGN: usize = 4096; // at most `MAX_ALIGN` bytes free mem is ignored
+
 /// A simple allocator that allocates based on size classes.
 pub struct Allocator {
-    // FIXME: Add the necessary fields.
+    start: usize,
+    end: usize,
+    len: usize,
+    bins: [Option<LinkedList>; BINS],
 }
 
 impl Allocator {
     /// Creates a new bin allocator that will allocate memory from the region
     /// starting at address `start` and ending at address `end`.
     pub fn new(start: usize, end: usize) -> Allocator {
-        unimplemented!("bin allocator")
+        println!("pAAA ------------- new {:x} - {:x}", start, end);
+        let start = align_up(start, MAX_ALIGN); // align all free memory
+        println!("after aligning: {:x}", start);
+        let mem_size = end - start;
+        check_memory(mem_size);
+        let mut bins = [None; BINS];
+        let mut current = start; // start of mem not associated to bins yet
+        for level in (BIN_OFFSET..(max_bin_level(mem_size) + 1)).rev() {
+            println!("{} {:X}", level, current);
+            let mut list = LinkedList::new();
+            if end - current >= 2usize.pow(level as u32) {
+                unsafe { list.push(current as *mut usize) };
+                current += 2usize.pow(level as u32);
+            }
+            bins[bin_level_to_index(level)] = Some(list);
+        }
+        if end - current == 2usize.pow(BIN_OFFSET as u32) {
+            unsafe { bins[0].expect("p1").push(current as *mut usize) };
+        }
+        println!("AAAAAA");
+        Allocator {
+            start: start,
+            end: end,
+            len: max_bin_level(mem_size) - BIN_OFFSET,
+            bins: bins,
+        }
     }
 
     /// Allocates memory. Returns a pointer meeting the size and alignment
@@ -37,7 +73,68 @@ impl Allocator {
     /// (`AllocError::Exhausted`) or `layout` does not meet this allocator's
     /// size or alignment constraints (`AllocError::Unsupported`).
     pub fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-        unimplemented!("bin allocation")
+        println!("ALLOCING {:?}", layout);
+        println!("{:?}", self);
+        self.check_bins();
+        if layout.align() > MAX_ALIGN {
+            // only when all free mem can be aligned,
+            // the result can be guaranteed to be aligned
+            // NOTE: if free mem start at 0,
+            // then the result will be aligned in any cases automagically
+            // but obviously it cannot be meet
+            return Err(AllocErr::Unsupported {
+                details: "Requested layout alignment size too big. \
+                          Tweak MAX_ALIGN constant in bin allocator.",
+            });
+        }
+        let target_level = target_level_from_layout(&layout); // minimum reqired level
+        let mut available_level = None;
+        println!("pCCCC target_level {}", target_level);
+        for level in target_level..(self.len + BIN_OFFSET + 1) {
+            println!("{} {:?}", level, self.bin_by_level(level));
+            if !self.bin_by_level(level).is_empty() {
+                available_level = Some(level);
+                break;
+            }
+        }
+        println!("CCCC");
+        if let Some(available_level) = available_level {
+            let debug_value = unsafe {
+                *self.bin_by_level(available_level).peek().unwrap() as *mut usize
+            };
+            let mut address = self.bin_by_level(available_level).pop().expect("p4"); // divide the block and push the first half to the bin of `level - 1`
+            self.bin_by_level(available_level).pop();
+            println!(
+                "AVAIL ADDRESS {:?} LEVEL {} POP FROM {:?} which ref to {:?}",
+                address,
+                available_level,
+                self.bin_by_level(available_level),
+                debug_value
+            );
+            /*unsafe { self.bin_by_level(level).expect("p5").push(address) };
+            address = unsafe { address.add(2usize.pow(((level) / 8) as u32)) }; // the second half
+*/
+            let mut level = available_level;
+            println!("DDDD");
+            while level > target_level {
+                // divide bins until level reachs target
+                level -= 1;
+                println!("pushed {:?} to {}", address, level);
+                unsafe { self.bin_by_level(level).push(address) };
+                address = unsafe { address.add(2usize.pow(level as u32) / 8) };
+            }
+            println!("alloc POST chck");
+            self.check_bins();
+            println!(
+                "ALLOCATED: {:?} at level {} \n{:?}\n---------",
+                address,
+                level,
+                self
+            );
+            Ok(address as *mut u8) // <del>automagically</del> aligned
+        } else {
+            Err(AllocErr::Exhausted { request: layout })
+        }
     }
 
     /// Deallocates the memory referenced by `ptr`.
@@ -54,8 +151,154 @@ impl Allocator {
     /// Parameters not meeting these conditions may result in undefined
     /// behavior.
     pub fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        unimplemented!("bin deallocation")
+        println!("DEALLOCING {:?}", layout);
+            ; self.check_bins();
+        self._dealloc(ptr, target_level_from_layout(&layout))
+    }
+
+    #[inline(always)]
+    fn _dealloc(&mut self, ptr: *mut u8, level: usize) {
+        let address = ptr as usize;
+        let offset = self.start;
+        let offset_address = address - self.start;
+        let mut parent_address = None; // start address of the parental block
+        println!("_dealloc level {}, at {:?}", level, ptr);
+        println!("{:?}", self);
+        println!("LEVEL BIN: {:?}", self.bin_by_level(level));
+        for node in self.bin_by_level(level).iter_mut() {
+            if ((((node.value() as usize - offset) >> level) ^
+                    (offset_address >> level)) % 2 == 1) 
+                && (((node.value() as usize - offset) >> level + 1) == (offset_address >> (level + 1)))
+            //if ((node.value() as i128) - address as i128).abs() as usize == 2usize.pow(level as u32)
+            {
+                println!(
+                    "_dealloc: two sibling block freed {:x} {:x} at level {}",
+                    address,
+                    node.value() as usize,
+                    level
+                ); // TODO: does not merge top two
+                // the first and second half of the corresponding higher level
+                // block are both free, merge them
+                parent_address = Some({
+                    let sibling_address = node.pop() as usize;
+                    //if (offset_address >> level) % 2 == 0 {
+                        // 0: left; 1: right
+                    if address < sibling_address {
+                        address as *mut u8
+                    } else {
+                        sibling_address as *mut u8
+                    }
+                });
+                break;
+            }
+        }
+        if let Some(parent_address) = parent_address {
+            println!("switching DEALLOC");
+            self._dealloc(parent_address, level + 1)
+        } else {
+            unsafe { self.bin_by_level(level).push(address as *mut usize) };
+            println!("DEALLOC final push {:x} into l{}", address, level);
+            println!("POST DEALLOC check");
+            self.check_bins();
+            println!("DEALLOC DONE level {} at {:?}\n{:?}\n---------DEALLOC---------", level, address as *mut usize, self);
+        }
+    }
+
+    fn bin_by_level(&mut self, level: usize) -> &mut LinkedList {
+        self.bins[bin_level_to_index(level)].as_mut().expect(
+            "Bin level out of bound",
+        )
+    }
+
+    fn check_bins(&mut self) {
+        let mut bins = [(0, 0); 1000];
+        let mut index = 0;
+        for l in BIN_OFFSET..(BIN_OFFSET + self.len + 1) {
+            for n in self.bin_by_level(l).iter() {
+                bins[index] = {
+                    let s = n as usize;
+                    let e = s + 2usize.pow(l as u32);
+                    (s, e)
+                };
+                index += 1;
+                if (n as usize) % min(MAX_ALIGN, 2usize.pow(l as u32)) != 0 {
+                    panic!("SHOULD HAVE BEEN ALIGNED: {:?} l{}", n, l);
+                }
+            }
+        }
+        let len = index;
+        use std::cmp::{max, min};
+        let mut a; 
+        for index in 0..len {
+            for indexx in (index+1)..len {
+                if {a =max(0, min(bins[index].1, bins[indexx].1) as i128 - max(bins[index].0, bins[indexx].0) as i128); a != 0} {
+                    panic!("BIN Overlaps {}: {:x} l{} - {:x} l{}", a, bins[index].0, log2(bins[index].1 - bins[index].0), bins[indexx].0, log2(bins[indexx].1 - bins[indexx].0));
+                }
+            }
+        }
     }
 }
 //
 // FIXME: Implement `Debug` for `Allocator`.
+impl fmt::Debug for Allocator {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let mut bin_status = String::new();
+        fmt.debug_struct("Allocator")
+            .field("start", &(self.start as *mut usize))
+            .field("end", &(self.end as *mut usize))
+            .field("size", &((self.end - self.start) as *mut usize))
+            .field("number_of_bins", &self.len)
+            .finish()
+            .and_then(|_| {
+                fmt.write_str("\n").and_then(|_| {
+                    fmt.debug_list()
+                        .entries(self.bins.iter().filter(|item| item.is_some()).map(|item| {
+                            item.unwrap()
+                        }))
+                        .finish()
+                })
+            })
+    }
+}
+
+fn check_memory(mem_size: usize) {
+    if !(BIN_OFFSET >= log2(std::mem::size_of::<usize>() / 8)) {
+        panic!(
+            "BIN_OFFSET in bin allocator is too small \
+                to fit LinkedList. Tweak it."
+        )
+    }
+    if mem_size < 2usize.pow(BIN_OFFSET as u32) {
+        panic!(
+            "Memory too small. \
+                Tweak the BIN_OFFSET constant in bin allocator."
+        );
+    }
+    if !(bin_level_to_index(max_bin_level(mem_size)) < BINS) {
+        panic!(format!(
+            "Memory too large ({}). \
+                Tweak the BINS constant in bin allocatior.",
+            mem_size
+        ));
+    }
+}
+
+fn target_level_from_layout(layout: &Layout) -> usize {
+    log2_up(std::cmp::max(layout.size(), layout.align())) // for alignment
+}
+
+fn max_bin_level(mem_size: usize) -> usize {
+    log2(if mem_size.is_power_of_two() {
+        mem_size / 2
+    } else {
+        mem_size
+    })
+}
+
+fn bin_level_to_index(level: usize) -> usize {
+    level - BIN_OFFSET
+}
+
+fn bin_index_to_level(index: usize) -> usize {
+    index + BIN_OFFSET
+}
