@@ -90,13 +90,8 @@ impl LinkedList {
 
     /// Removes and returns the first item in the list, if any.
     pub fn pop(&mut self) -> Option<*mut usize> {
-        //println!("@");
         let value = self.peek()?;
         self.head = unsafe { *value as *mut usize };
-        if self.head as usize == 0xafafafafafafafaf {
-            panic!("INVALID ADDRESS");
-        }
-        //println!("!!! {:?} !!!", self.head);
         Some(value)
     }
 
@@ -128,7 +123,6 @@ impl LinkedList {
 
 impl fmt::Debug for LinkedList {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        //println!("LL: {:?}", self.head);
         f.debug_list().entries(self.iter()).finish()
     }
 }
