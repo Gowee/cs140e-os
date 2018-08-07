@@ -1,9 +1,9 @@
+use alloc::heap::{AllocErr, Layout};
 use std;
 use std::fmt;
-use alloc::heap::{AllocErr, Layout};
 
-use allocator::util::*;
 use allocator::linked_list::LinkedList;
+use allocator::util::*;
 
 const BINS: usize = 30; // enough for RPi3B of which RAM < 1G
 const BIN_OFFSET: usize = 3;
@@ -132,10 +132,9 @@ impl Allocator {
         let offset_address = address - self.start;
         let mut parent_address = None; // start address of the parental block
         for node in self.bin_by_level(level).iter_mut() {
-            if ((((node.value() as usize - offset) >> level) ^ (offset_address >> level)) % 2 ==
-                    1) &&
-                (((node.value() as usize - offset) >> level + 1) ==
-                     (offset_address >> (level + 1)))
+            if ((((node.value() as usize - offset) >> level) ^ (offset_address >> level)) % 2 == 1)
+                && (((node.value() as usize - offset) >> level + 1)
+                    == (offset_address >> (level + 1)))
             {
                 // TODO: does not merge top two
                 // the first and second half of the corresponding higher level
@@ -159,11 +158,11 @@ impl Allocator {
     }
 
     fn bin_by_level(&mut self, level: usize) -> &mut LinkedList {
-        self.bins[bin_level_to_index(level)].as_mut().expect(
-            "Bin level out of bound",
-        )
+        self.bins[bin_level_to_index(level)]
+            .as_mut()
+            .expect("Bin level out of bound")
     }
-    
+
     /*/// Validate there are no overlap between any two bin instances (for debugging).
     fn check_bins(&mut self) {
         let mut bins = [(0, 0); 1000];
@@ -221,10 +220,12 @@ impl fmt::Debug for Allocator {
             .and_then(|_| {
                 fmt.write_str("\n").and_then(|_| {
                     fmt.debug_list()
-                        .entries(self.bins.iter().filter(|item| item.is_some()).map(|item| {
-                            item.unwrap()
-                        }))
-                        .finish()
+                        .entries(
+                            self.bins
+                                .iter()
+                                .filter(|item| item.is_some())
+                                .map(|item| item.unwrap()),
+                        ).finish()
                 })
             })
     }
@@ -235,21 +236,21 @@ fn check_memory(mem_size: usize) {
     if !(BIN_OFFSET >= log2(std::mem::size_of::<usize>() / 8)) {
         panic!(
             "BIN_OFFSET in bin allocator is too small \
-                to fit LinkedList. Tweak it."
+             to fit LinkedList. Tweak it."
         )
     }
     if mem_size < 2usize.pow(BIN_OFFSET as u32) {
         panic!(
             "Memory too small. \
-                Tweak the BIN_OFFSET constant in bin allocator."
+             Tweak the BIN_OFFSET constant in bin allocator."
         );
     }
     if !(bin_level_to_index(max_bin_level(mem_size)) < BINS) {
-        panic!(format!(
+        panic!(
             "Memory too large ({}). \
-                Tweak the BINS constant in bin allocatior.",
+             Tweak the BINS constant in bin allocatior.",
             mem_size
-        ));
+        );
     }
 }
 

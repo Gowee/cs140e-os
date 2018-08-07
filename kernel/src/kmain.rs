@@ -35,6 +35,8 @@ pub static ALLOCATOR: Allocator = Allocator::uninitialized();
 
 pub static FILE_SYSTEM: FileSystem = FileSystem::uninitialized();
 
+pub use fs::wait_micros;
+
 use pi::gpio;
 
 struct LED {
@@ -70,6 +72,6 @@ pub extern "C" fn kmain() {
         led.blink_for(300);
     }
     ALLOCATOR.initialize();
-
+    FILE_SYSTEM.initialize();
     shell::shell("> ");
 }
