@@ -90,8 +90,6 @@ impl Allocator {
             }
         }
         if let Some(available_level) = available_level {
-            let debug_value =
-                unsafe { *self.bin_by_level(available_level).peek().unwrap() as *mut usize };
             let mut address = self.bin_by_level(available_level).pop().expect("p4");
             self.bin_by_level(available_level).pop();
             let mut level = available_level;
@@ -210,7 +208,6 @@ impl Allocator {
 
 impl fmt::Debug for Allocator {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let mut bin_status = String::new();
         fmt.debug_struct("Allocator")
             .field("start", &(self.start as *mut usize))
             .field("end", &(self.end as *mut usize))

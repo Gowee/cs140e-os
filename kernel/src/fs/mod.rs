@@ -54,7 +54,7 @@ impl DerefMut for FileSystem {
     }
 }*/
 
-impl traits::FileSystem for FileSystem {
+impl<'a> traits::FileSystem for &'a FileSystem {
     type File = File;
     type Dir = Dir;
     type Entry = Entry;
