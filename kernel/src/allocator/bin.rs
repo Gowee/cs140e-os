@@ -1,6 +1,7 @@
 use alloc::heap::{AllocErr, Layout};
 use std;
 use std::fmt;
+use std::cmp::max;
 
 use allocator::linked_list::LinkedList;
 use allocator::util::*;
@@ -257,7 +258,7 @@ fn check_memory(mem_size: usize) {
 /// In order for the automagical alignment to work, the size of mem to request should be
 /// `max(layout.align(), layout.size())`
 fn target_level_from_layout(layout: &Layout) -> usize {
-    log2_up(std::cmp::max(layout.size(), layout.align())) // for alignment
+    max(log2_up(max(layout.size(), layout.align())), 3) // for alignment
 }
 
 /// Maximum level of bins can exist at initialization. It is constrained by the size of the whole

@@ -133,21 +133,27 @@ pub fn shell(prefix: &str) -> ! {
                     console
                         .write_fmt(format_args!("{}", cwd.display()))
                         .unwrap();
-                    console.write_byte(b'\n');
+                    console.write(b"\r\n").unwrap();
                 }
                 "cd" => {
                     if command.args.len() == 2 {
-                        match FILE_SYSTEM.open(cwd.join(command.args[1])) {
-                            Ok(vfat::Entry::File(_file)) => {
-                                kprintln!("Error: Cannot cd into a file.");
+                        match command.args[1] {
+                            "." => {}
+                            ".." => {
+                                cwd.pop();
                             }
-                            Ok(vfat::Entry::Dir(_dir)) => {
-                                kprintln!("");
-                                cwd.push(command.args[1]);
-                            }
-                            Err(err) => {
-                                kprintln!("{:?}", err);
-                            }
+                            directory => match FILE_SYSTEM.open(cwd.join(directory)) {
+                                Ok(vfat::Entry::File(_file)) => {
+                                    kprintln!("Error: Cannot cd into a file.");
+                                }
+                                Ok(vfat::Entry::Dir(_dir)) => {
+                                    kprintln!("");
+                                    cwd.push(command.args[1]);
+                                }
+                                Err(err) => {
+                                    kprintln!("{:?}", err);
+                                }
+                            },
                         }
                     } else {
                         kprintln!("Error: Expected exactly 1 argument.");
@@ -201,7 +207,7 @@ pub fn shell(prefix: &str) -> ! {
                                 console.write_byte(b'\t');
                                 console
                                     .write_fmt(format_args!(
-                                        "{}\t{}\t{}\t{}\n",
+                                        "{}\t{}\t{}\t{}\r\n",
                                         metadata.created_time,
                                         metadata.modified_time,
                                         match entry {
@@ -236,12 +242,12 @@ pub fn shell(prefix: &str) -> ! {
                     }
                     for mut file in files {
                         let mut buf = vec![];
-                        /*if let Err(err) = */
-                        file.read_to_end(&mut buf).expect("Read file."); /* {
+                        if let Err(err) = file.read_to_end(&mut buf) {
                             kprintln!("{:?}", err);
                             break;
-                        }*/
-                        CONSOLE.lock().write(&buf).unwrap();
+                        }
+                        kprint!("{}", &String::from_utf8_lossy(&buf[..]));
+                        //CONSOLE.lock().write(&buf).unwrap(); // TODO: No \r is outputed? WTF???
                     }
                 }
                 _ => {
