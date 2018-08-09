@@ -14,18 +14,22 @@
 #![feature(naked_functions)]
 #![feature(fn_must_use)]
 #![feature(alloc, allocator_api, global_allocator)]
+#![feature(pointer_methods)]
+#![feature(i128_type)]
 
 #[macro_use]
 #[allow(unused_imports)]
 extern crate alloc;
+extern crate fat32;
 extern crate pi;
 extern crate stack_vec;
-extern crate fat32;
 
 pub mod allocator;
-pub mod lang_items;
-pub mod mutex;
 pub mod console;
+pub mod fs;
+pub mod lang_items;
+pub mod led;
+pub mod mutex;
 pub mod shell;
 pub mod fs;
 pub mod traps;
@@ -45,9 +49,18 @@ pub static ALLOCATOR: Allocator = Allocator::uninitialized();
 pub static FILE_SYSTEM: FileSystem = FileSystem::uninitialized();
 
 pub static SCHEDULER: GlobalScheduler = GlobalScheduler::uninitialized();
+pub use fs::wait_micros;
+
+use led::LED;
 
 #[no_mangle]
 #[cfg(not(test))]
 pub extern "C" fn kmain() {
+    let mut led = LED::new(16);
+    for _ in 0..3 {
+        led.blink_for(300);
+    }
     ALLOCATOR.initialize();
+    FILE_SYSTEM.initialize();
+    shell::shell("> ");
 }

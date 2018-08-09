@@ -3,7 +3,7 @@
 pub struct Atag {
     pub dwords: u32,
     pub tag: u32,
-    pub kind: Kind
+    pub kind: Kind,
 }
 
 impl Atag {
@@ -20,7 +20,15 @@ impl Atag {
 
     /// Returns the ATAG following `self`, if there is one.
     pub fn next(&self) -> Option<&Atag> {
-        unimplemented!()
+        match self.tag { // NOTE: here is the current atag
+            Self::NONE => {
+                None
+            }
+            _ => {
+                Some(unsafe { // NOTE: here is the next atag
+                    &*((((self as *const Atag) as usize) + (self.dwords as usize) * 4) as *const Atag) })
+            }
+        }
     }
 }
 
@@ -38,7 +46,7 @@ pub union Kind {
 pub struct Core {
     pub flags: u32,
     pub page_size: u32,
-    pub root_dev: u32
+    pub root_dev: u32,
 }
 
 /// A `MEM` ATAG.
@@ -46,7 +54,7 @@ pub struct Core {
 #[derive(Debug, Copy, Clone)]
 pub struct Mem {
     pub size: u32,
-    pub start: u32
+    pub start: u32,
 }
 
 /// A `CMDLINE` ATAG.
@@ -54,5 +62,5 @@ pub struct Mem {
 #[derive(Debug, Copy, Clone)]
 pub struct Cmd {
     /// The first byte of the command line string.
-    pub cmd: u8
+    pub cmd: u8,
 }

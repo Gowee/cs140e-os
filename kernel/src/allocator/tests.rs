@@ -1,5 +1,5 @@
 mod align_util {
-    use allocator::util::{align_up, align_down};
+    use allocator::util::{align_up, align_down, log2, log2_up};
 
     #[test]
     fn test_align_down() {
@@ -46,6 +46,20 @@ mod align_util {
         assert_eq!(align_up(0xABCDAB, 1 << 8), 0xABCE00);
         assert_eq!(align_up(0xABCDAB, 1 << 12), 0xABD000);
         assert_eq!(align_up(0xABCDAB, 1 << 16), 0xAC0000);
+    }
+
+    #[test]
+    fn test_log2() {
+        assert_eq!(log2(100), 6);
+        assert_eq!(log2(1024), 10);
+        assert_eq!(log2(1), 0);
+    }
+
+    #[test]
+    fn test_log2_up() {
+        assert_eq!(log2_up(100), 7);
+        assert_eq!(log2_up(1024), 10);
+        assert_eq!(log2_up(1), 0);
     }
 
     #[test] #[should_panic] fn test_panics_1() { align_down(0xFFFF0000, 7); }
