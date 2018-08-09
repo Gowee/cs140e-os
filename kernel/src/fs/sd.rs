@@ -1,7 +1,6 @@
 use fat32::traits::BlockDevice;
 use pi::timer::spin_sleep_us;
 use std::io;
-use std::marker;
 
 extern "C" {
     /// A global representing the last SD controller error that occured.

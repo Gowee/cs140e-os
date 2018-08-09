@@ -207,14 +207,15 @@ pub fn shell(prefix: &str) -> ! {
                                 console.write_byte(b'\t');
                                 console
                                     .write_fmt(format_args!(
-                                        "{}\t{}\t{}\t{}\r\n",
+                                        "{}\t{}\t{}\t{}{}\r\n",
                                         metadata.created_time,
                                         metadata.modified_time,
                                         match entry {
                                             vfat::Entry::File(ref file) => file.size(),
                                             vfat::Entry::Dir(ref _dir) => 0,
                                         },
-                                        entry.name()
+                                        entry.name(),
+                                        if entry.is_file() { "" } else { "/" }
                                     )).unwrap();
                             }
                         }

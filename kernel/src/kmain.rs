@@ -14,16 +14,17 @@
 #[macro_use]
 #[allow(unused_imports)]
 extern crate alloc;
+extern crate fat32;
 extern crate pi;
 extern crate stack_vec;
-extern crate fat32;
 
 pub mod allocator;
-pub mod lang_items;
-pub mod mutex;
 pub mod console;
-pub mod shell;
 pub mod fs;
+pub mod lang_items;
+pub mod led;
+pub mod mutex;
+pub mod shell;
 
 #[cfg(not(test))]
 use allocator::Allocator;
@@ -37,32 +38,7 @@ pub static FILE_SYSTEM: FileSystem = FileSystem::uninitialized();
 
 pub use fs::wait_micros;
 
-use pi::gpio;
-
-struct LED {
-    pin: gpio::Gpio<gpio::Output>,
-}
-
-impl LED {
-    fn new(pin: u8) -> LED {
-        LED { pin: gpio::Gpio::new(pin).into_output() }
-    }
-
-    fn on(&mut self) {
-        self.pin.set()
-    }
-
-    fn off(&mut self) {
-        self.pin.clear()
-    }
-
-    fn blink_for(&mut self, duration: u64) {
-        self.on();
-        pi::timer::spin_sleep_ms(duration);
-        self.off();
-        pi::timer::spin_sleep_ms(duration);
-    }
-}
+use led::LED;
 
 #[no_mangle]
 #[cfg(not(test))]

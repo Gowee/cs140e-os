@@ -1,12 +1,11 @@
 pub mod sd;
 
 use std::io;
-use std::ops::{Deref, DerefMut};
 use std::path::Path;
 
 use console::kprintln;
 pub use fat32::traits;
-use fat32::vfat::{self, Dir, Entry, File, Shared, VFat};
+use fat32::vfat::{Dir, Entry, File, Shared, VFat};
 
 use self::sd::Sd;
 use mutex::Mutex;
@@ -34,7 +33,6 @@ impl FileSystem {
             VFat::from(Sd::new().expect("Initialize SD card driver."))
                 .expect("Initialize VFat for SD Card."),
         );
-        kprintln!("{:?}", self.0.lock().as_ref().expect("ANCHOR1"));
     }
 }
 

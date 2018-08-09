@@ -1,10 +1,17 @@
+#[allow(unused_imports)]
 use console::{kprint, kprintln};
 #[no_mangle]
 #[cfg(not(test))]
 #[lang = "panic_fmt"]
-pub extern fn panic_fmt(fmt: ::std::fmt::Arguments, file: &'static str, line: u32, col: u32) -> ! {
+pub extern "C" fn panic_fmt(
+    fmt: ::std::fmt::Arguments,
+    file: &'static str,
+    line: u32,
+    col: u32,
+) -> ! {
     // FIXME: Print `fmt`, `file`, and `line` to the console.
-    kprintln!("\
+    kprintln!(
+        "\
 ╔═╗╔═╗╔╗╔╦╔═╗┬
 ╠═╝╠═╣║║║║║  │
 ╩  ╩ ╩╝╚╝╩╚═╝o 
@@ -13,9 +20,18 @@ File: {}
 Line: {}
 Column: {}
 
-{}", file, line, col, fmt);
+{}",
+        file,
+        line,
+        col,
+        fmt
+    );
 
-    loop { unsafe { asm!("wfe") } }
+    loop {
+        unsafe { asm!("wfe") }
+    }
 }
 
-#[cfg(not(test))] #[lang = "eh_personality"] pub extern fn eh_personality() {}
+#[cfg(not(test))]
+#[lang = "eh_personality"]
+pub extern "C" fn eh_personality() {}

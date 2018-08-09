@@ -1,7 +1,7 @@
 use alloc::heap::{AllocErr, Layout};
 use std;
-use std::fmt;
 use std::cmp::max;
+use std::fmt;
 
 use allocator::linked_list::LinkedList;
 use allocator::util::*;
@@ -162,7 +162,8 @@ impl Allocator {
             .expect("Bin level out of bound")
     }
 
-    /*/// Validate there are no overlap between any two bin instances (for debugging).
+    #[allow(dead_code)]
+    /// Validate there are no overlap between any two bin instances (for debugging).
     fn check_bins(&mut self) {
         let mut bins = [(0, 0); 1000];
         let mut index = 0;
@@ -187,12 +188,11 @@ impl Allocator {
                 if {
                     a = max(
                         0,
-                        min(bins[index].1, bins[indexx].1) as i128 -
-                            max(bins[index].0, bins[indexx].0) as i128,
+                        min(bins[index].1, bins[indexx].1) as i128
+                            - max(bins[index].0, bins[indexx].0) as i128,
                     );
                     a != 0
-                }
-                {
+                } {
                     panic!(
                         "BIN Overlaps {}: {:x} l{} - {:x} l{}",
                         a,
@@ -204,7 +204,7 @@ impl Allocator {
                 }
             }
         }
-    }*/
+    }
 }
 
 impl fmt::Debug for Allocator {
@@ -275,6 +275,7 @@ fn bin_level_to_index(level: usize) -> usize {
     level - BIN_OFFSET
 }
 
+#[allow(dead_code)]
 fn bin_index_to_level(index: usize) -> usize {
     index + BIN_OFFSET
 }
