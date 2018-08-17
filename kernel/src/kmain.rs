@@ -24,17 +24,16 @@ extern crate fat32;
 extern crate pi;
 extern crate stack_vec;
 
+pub mod aarch64;
 pub mod allocator;
 pub mod console;
 pub mod fs;
 pub mod lang_items;
 pub mod led;
 pub mod mutex;
-pub mod shell;
-pub mod fs;
-pub mod traps;
-pub mod aarch64;
 pub mod process;
+pub mod shell;
+pub mod traps;
 pub mod vm;
 
 #[cfg(not(test))]
@@ -59,6 +58,9 @@ pub extern "C" fn kmain() {
     let mut led = LED::new(16);
     for _ in 0..3 {
         led.blink_for(300);
+    }
+    for _ in 0..unsafe { aarch64::current_el() } {
+        led.blink_for(1000);
     }
     ALLOCATOR.initialize();
     FILE_SYSTEM.initialize();
