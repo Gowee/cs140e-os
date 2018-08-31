@@ -11,6 +11,7 @@ use console::kprintln;
 use self::syndrome::Syndrome;
 use self::irq::handle_irq;
 use self::syscall::handle_syscall;
+use shell::shell;
 
 #[repr(u16)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -43,5 +44,12 @@ pub struct Info {
 /// the trap frame for the exception.
 #[no_mangle]
 pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
-    unimplemented!("handle_exception")
+    kprintln!("Exception:\n\tInfo: {:?}", info);
+    if info.kind == Kind::Synchronous {
+        let syndrome = Syndrome::from(esr);
+        kprintln!("\tESR: {:?}", syndrome);
+        if let Syndrome::Brk(_) = syndrome {
+            shell("E> ");
+        }
+    }
 }

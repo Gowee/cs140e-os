@@ -50,7 +50,7 @@ impl<'a> Command<'a> {
 
 /// Starts a shell using `prefix` as the prefix for each line. This function
 /// returns if the `exit` command is called.
-pub fn shell(prefix: &str) -> ! {
+pub fn shell(prefix: &str) {
     use std::io::Write;
     kprintln!("Welcome to...");
     kprintln!(
@@ -250,6 +250,9 @@ pub fn shell(prefix: &str) -> ! {
                         kprint!("{}", &String::from_utf8_lossy(&buf[..]));
                         //CONSOLE.lock().write(&buf).unwrap(); // TODO: No \r is outputed? WTF???
                     }
+                }
+                "exit" => {
+                    return;
                 }
                 _ => {
                     kprintln!(

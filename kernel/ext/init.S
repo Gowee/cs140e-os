@@ -75,7 +75,9 @@ switch_to_el1:
     msr     SCTLR_EL1, x2
 
     // set up exception handlers
-    // FIXME: load `_vectors` addr into appropriate register (guide: 10.4)
+    // load `_vectors` addr into appropriate register (guide: 10.4)
+    adr     x3, _vectors
+    msr     VBAR_EL1, x3
 
     // change execution level to EL1 (ref: C5.2.19)
     mov     x2, #0x3c5
@@ -107,7 +109,43 @@ go_kmain:
     b       halt
 
 context_save:
-    // FIXME: Save the remaining context to the stack.
+    // ARMv8-A Programmer Guide:
+    //  No LDM adn STM in A64 instruction set.
+
+    // General-purpose registers (64 bits per)
+    // stp     x0, x1, [SP, #-16]!
+    // stp     x2, x3, [SP, #-16]!
+    // stp     x4, x5, [SP, #-16]!
+    // stp     x6, x7, [SP, #-16]!
+    stp     x8, x9, [SP, #-16]!
+    stp     x10, x11, [SP, #-16]!
+    stp     x12, x13, [SP, #-16]!
+    stp     x14, x15, [SP, #-16]!
+    stp     x16, x17, [SP, #-16]!
+    stp     x18, x30, [SP, #-16]!
+
+    // SIMD/FP registers (128 bits per)
+    stp q0, q1, [SP, #-32]!
+    stp q2, q3, [SP, #-32]!
+    stp q4, q5, [SP, #-32]!
+    stp q6, q7, [SP, #-32]!
+    stp q8, q9, [SP, #-32]!
+    stp q10, q11, [SP, #-32]!
+    stp q12, q13, [SP, #-32]!
+    stp q14, q15, [SP, #-32]!
+    stp q16, q17, [SP, #-32]!
+    stp q18, q19, [SP, #-32]!
+    stp q20, q21, [SP, #-32]!
+    stp q22, q23, [SP, #-32]!
+    stp q24, q25, [SP, #-32]!
+    stp q26, q27, [SP, #-32]!
+    stp q28, q29, [SP, #-32]!
+    stp q30, q31, [SP, #-32]!
+
+    mrs x1, ESR_EL1 // The 16 handlers in _vectors are all for EL1.
+    mov x2, #0
+    bl handle_exception
+
 
 .global context_restore
 context_restore:
@@ -117,13 +155,31 @@ context_restore:
 
 #define HANDLER(source, kind) \
     .align 7; \
-    stp     lr, x0, [SP, #-16]!; \
+    stp     x30, x0, [SP, #-16]!; \
     mov     x0, ##source; \
     movk    x0, ##kind, LSL #16; \
     bl      context_save; \
-    ldp     lr, x0, [SP], #16; \
+    ldp     x30, x0, [SP], #16; \
     eret
+
+// Using x30 instead of lr is needed for GCC.
+// See: https://bugs.webkit.org/show_bug.cgi?id=175512 (Unsure). 
 
 .align 11
 _vectors:
-    // FIXME: Setup the 16 exception vectors.
+    HANDLER(0, 0)
+    HANDLER(0, 1)
+    HANDLER(0, 2)
+    HANDLER(0, 3)
+    HANDLER(1, 0)
+    HANDLER(1, 1)
+    HANDLER(1, 2)
+    HANDLER(1, 3)
+    HANDLER(2, 0)
+    HANDLER(2, 1)
+    HANDLER(2, 2)
+    HANDLER(2, 3)
+    HANDLER(3, 0)
+    HANDLER(3, 1)
+    HANDLER(3, 2)
+    HANDLER(3, 3)
