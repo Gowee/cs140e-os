@@ -49,7 +49,10 @@ pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
         let syndrome = Syndrome::from(esr);
         kprintln!("\tESR: {:?}", syndrome);
         if let Syndrome::Brk(_) = syndrome {
+            kprintln!("Source PC: 0x{:X}", tf.pc);
+            tf.pc += 4;
             shell("E> ");
+            kprintln!("Exiting the debug shell.");
         }
     }
 }

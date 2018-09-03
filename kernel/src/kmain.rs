@@ -64,7 +64,7 @@ pub extern "C" fn kmain() {
     }
     ALLOCATOR.initialize();
     FILE_SYSTEM.initialize();
-    // unsafe { asm!("svc 77" :::: "volatile"); }
+    unsafe { asm!("brk 2" :::: "volatile"); }
     loop {
         shell::shell("> ");
     }

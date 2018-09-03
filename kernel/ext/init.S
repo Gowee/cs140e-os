@@ -113,43 +113,103 @@ context_save:
     //  No LDM adn STM in A64 instruction set.
 
     // General-purpose registers (64 bits per)
-    // stp     x0, x1, [SP, #-16]!
-    // stp     x2, x3, [SP, #-16]!
-    // stp     x4, x5, [SP, #-16]!
-    // stp     x6, x7, [SP, #-16]!
-    stp     x8, x9, [SP, #-16]!
-    stp     x10, x11, [SP, #-16]!
-    stp     x12, x13, [SP, #-16]!
-    stp     x14, x15, [SP, #-16]!
-    stp     x16, x17, [SP, #-16]!
-    stp     x18, x30, [SP, #-16]!
+    stp     x29, xzr, [SP, #-16]!
+    stp     x27, x28, [SP, #-16]!
+    stp     x25, x26, [SP, #-16]!
+    stp     x23, x24, [SP, #-16]!
+    stp     x21, x22, [SP, #-16]!
+    stp     x19, x20, [SP, #-16]!
+    stp     x17, x18, [SP, #-16]!
+    stp     x15, x16, [SP, #-16]!
+    stp     x13, x14, [SP, #-16]!
+    stp     x11, x12, [SP, #-16]!
+    stp     x9, x10, [SP, #-16]!
+    stp     x7, x8, [SP, #-16]!
+    stp     x5, x6, [SP, #-16]!
+    stp     x3, x4, [SP, #-16]!
+    stp     x1, x2, [SP, #-16]!
+
 
     // SIMD/FP registers (128 bits per)
-    stp q0, q1, [SP, #-32]!
-    stp q2, q3, [SP, #-32]!
-    stp q4, q5, [SP, #-32]!
-    stp q6, q7, [SP, #-32]!
-    stp q8, q9, [SP, #-32]!
-    stp q10, q11, [SP, #-32]!
-    stp q12, q13, [SP, #-32]!
-    stp q14, q15, [SP, #-32]!
-    stp q16, q17, [SP, #-32]!
-    stp q18, q19, [SP, #-32]!
-    stp q20, q21, [SP, #-32]!
-    stp q22, q23, [SP, #-32]!
-    stp q24, q25, [SP, #-32]!
-    stp q26, q27, [SP, #-32]!
-    stp q28, q29, [SP, #-32]!
-    stp q30, q31, [SP, #-32]!
+    stp     q30, q31, [SP, #-32]!
+    stp     q28, q29, [SP, #-32]!
+    stp     q26, q27, [SP, #-32]!
+    stp     q24, q25, [SP, #-32]!
+    stp     q22, q23, [SP, #-32]!
+    stp     q20, q21, [SP, #-32]!
+    stp     q18, q19, [SP, #-32]!
+    stp     q16, q17, [SP, #-32]!
+    stp     q14, q15, [SP, #-32]!
+    stp     q12, q13, [SP, #-32]!
+    stp     q10, q11, [SP, #-32]!
+    stp     q8, q9, [SP, #-32]!
+    stp     q6, q7, [SP, #-32]!
+    stp     q4, q5, [SP, #-32]!
+    stp     q2, q3, [SP, #-32]!
+    stp     q0, q1, [SP, #-32]!
 
-    mrs x1, ESR_EL1 // The 16 handlers in _vectors are all for EL1.
-    mov x2, #0
-    bl handle_exception
+    mrs     x3, SP_EL0
+    mrs     x4, TPIDR_EL0
+    stp     x3, x4, [SP, #-16]!
+
+    mrs     x3, ELR_EL1
+    mrs     x4, SPSR_EL1
+    stp     x3, x4, [SP, #-16]!
+
+    
+    // Note: The 16 handlers in _vectors are all for EL1.
+    mrs     x1, ESR_EL1
+    mov     x2, SP
+
+    mov     x19, x30 // lr populated by `bl context_save`
+    bl      handle_exception
+    mov     x30, x19
 
 
 .global context_restore
 context_restore:
     // FIXME: Restore the context from the stack.
+    ldp     x3, x4, [SP], #16
+    msr     ELR_EL1, x3
+    msr     SPSR_EL1, x4
+
+    ldp     x3, x4, [SP], #16
+    msr     SP_EL0, x3
+    msr     TPIDR_EL0, x4
+
+    ldp     q0, q1, [SP], #32
+    ldp     q2, q3, [SP], #32
+    ldp     q4, q5, [SP], #32
+    ldp     q6, q7, [SP], #32
+    ldp     q8, q9, [SP], #32
+    ldp     q10, q11, [SP], #32
+    ldp     q12, q13, [SP], #32
+    ldp     q14, q15, [SP], #32
+    ldp     q16, q17, [SP], #32
+    ldp     q18, q19, [SP], #32
+    ldp     q20, q21, [SP], #32
+    ldp     q22, q23, [SP], #32
+    ldp     q24, q25, [SP], #32
+    ldp     q26, q27, [SP], #32
+    ldp     q28, q29, [SP], #32
+    ldp     q30, q31, [SP], #32
+
+    ldp     x1, x2, [SP], #16
+    ldp     x3, x4, [SP], #16
+    ldp     x5, x6, [SP], #16
+    ldp     x7, x8, [SP], #16
+    ldp     x9, x10, [SP], #16
+    ldp     x11, x12, [SP], #16
+    ldp     x13, x14, [SP], #16
+    ldp     x15, x16, [SP], #16
+    ldp     x17, x18, [SP], #16
+    ldp     x19, x20, [SP], #16
+    ldp     x21, x22, [SP], #16
+    ldp     x23, x24, [SP], #16
+    ldp     x25, x26, [SP], #16
+    ldp     x27, x28, [SP], #16
+    ldr     x29, [SP], #16
+
 
     ret
 
