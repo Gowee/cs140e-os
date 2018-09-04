@@ -82,7 +82,7 @@ switch_to_el1:
     // change execution level to EL1 (ref: C5.2.19)
     mov     x2, #0x3c5
     msr     SPSR_EL2, x2
-    // FIXME: Return to EL1 at `set_stack`.
+    // Return to EL1 at `set_stack`.
     adr     x2, set_stack
     msr     ELR_EL2, x2
     eret
@@ -168,7 +168,7 @@ context_save:
 
 .global context_restore
 context_restore:
-    // FIXME: Restore the context from the stack.
+    // Restore the context from the stack.
     ldp     x3, x4, [SP], #16
     msr     ELR_EL1, x3
     msr     SPSR_EL1, x4
