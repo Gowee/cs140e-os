@@ -1,16 +1,17 @@
 mod irq;
-mod trap_frame;
 mod syndrome;
 mod syscall;
+mod trap_frame;
+
 
 use pi::interrupt::{Controller, Interrupt};
 
 pub use self::trap_frame::TrapFrame;
 
-use console::kprintln;
-use self::syndrome::Syndrome;
 use self::irq::handle_irq;
+use self::syndrome::Syndrome;
 use self::syscall::handle_syscall;
+use console::kprintln;
 use shell::shell;
 use LED;
 
@@ -44,20 +45,34 @@ pub struct Info {
 /// the value of the exception syndrome register. Finally, `tf` is a pointer to
 /// the trap frame for the exception.
 #[no_mangle]
-pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
+pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
     let mut led = LED::new(16);
     for _ in 0..1 {
         led.blink_for(100);
     }
     kprintln!("Exception:\n\tInfo: {:?}", info);
-    if info.kind == Kind::Synchronous {
-        let syndrome = Syndrome::from(esr);
-        kprintln!("\tESR: {:?}", syndrome);
-        if let Syndrome::Brk(_) = syndrome {
-            // kprintln!("Source PC: 0x{:X}", tf.pc);
-            tf.pc += 4;
-            shell("E> ");
-            kprintln!("Exiting the debug shell.");
+    match info.kind {
+        Kind::Synchronous => {
+            let syndrome = Syndrome::from(esr);
+            kprintln!("\tESR: {:?}", syndrome);
+            if let Syndrome::Brk(_) = syndrome {
+                // kprintln!("Source PC: 0x{:X}", tf.pc);
+                tf.pc += 4;
+                shell("E> ");
+                kprintln!("Exiting the debug shell.");
+            }
         }
+        Kind::Irq => {
+            use self::Interrupt::*;
+
+            let intctl = Controller::new();
+            for int in [Timer1, Timer3, Usb, Gpio0, Gpio1, Gpio2, Gpio3, Uart].iter() {
+                if intctl.is_pending(*int) {
+                    kprintln!("\tInterrupt: {:?}", int);
+                    handle_irq(*int, tf);
+                }
+            }
+        }
+        _ => (),
     }
 }

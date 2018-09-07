@@ -1,5 +1,7 @@
 use std::collections::VecDeque;
 
+use pi::{timer, interrupt};
+
 use mutex::Mutex;
 use process::{Process, State, Id};
 use traps::TrapFrame;
@@ -39,6 +41,9 @@ impl GlobalScheduler {
     /// using timer interrupt based preemptive scheduling. This method should
     /// not return under normal conditions.
     pub fn start(&self) {
+        interrupt::Controller::new().enable(interrupt::Interrupt::Timer1);
+        timer::tick_in(TICK);
+
         *self.0.lock() = Some(Scheduler::new());
         let mut first_process = Process::new().expect("Create the initial process");
         first_process.trap_frame.pc = run_shell as u64;
