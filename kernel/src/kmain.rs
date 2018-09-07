@@ -64,8 +64,14 @@ pub extern "C" fn kmain() {
     }
     ALLOCATOR.initialize();
     FILE_SYSTEM.initialize();
+    SCHEDULER.start();
+}
+
+#[no_mangle]
+extern fn run_shell() {
+    unsafe { asm!("brk 1" :::: "volatile"); }
     unsafe { asm!("brk 2" :::: "volatile"); }
-    loop {
-        shell::shell("> ");
-    }
+    shell::shell("user0> ");
+    unsafe { asm!("brk 3" :::: "volatile"); }
+    loop { shell::shell("user1> "); }
 }

@@ -12,6 +12,7 @@ use self::syndrome::Syndrome;
 use self::irq::handle_irq;
 use self::syscall::handle_syscall;
 use shell::shell;
+use LED;
 
 #[repr(u16)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -44,12 +45,16 @@ pub struct Info {
 /// the trap frame for the exception.
 #[no_mangle]
 pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
+    let mut led = LED::new(16);
+    for _ in 0..1 {
+        led.blink_for(100);
+    }
     kprintln!("Exception:\n\tInfo: {:?}", info);
     if info.kind == Kind::Synchronous {
         let syndrome = Syndrome::from(esr);
         kprintln!("\tESR: {:?}", syndrome);
         if let Syndrome::Brk(_) = syndrome {
-            kprintln!("Source PC: 0x{:X}", tf.pc);
+            // kprintln!("Source PC: 0x{:X}", tf.pc);
             tf.pc += 4;
             shell("E> ");
             kprintln!("Exiting the debug shell.");

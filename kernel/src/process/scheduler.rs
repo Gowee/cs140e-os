@@ -4,6 +4,8 @@ use mutex::Mutex;
 use process::{Process, State, Id};
 use traps::TrapFrame;
 
+use run_shell;
+
 /// The `tick` time.
 // FIXME: When you're ready, change this to something more reasonable.
 pub const TICK: u32 = 2 * 1000 * 1000;
@@ -37,7 +39,25 @@ impl GlobalScheduler {
     /// using timer interrupt based preemptive scheduling. This method should
     /// not return under normal conditions.
     pub fn start(&self) {
-        unimplemented!("GlobalScheduler::start()")
+        *self.0.lock() = Some(Scheduler::new());
+        let mut first_process = Process::new().expect("Create the initial process");
+        first_process.trap_frame.pc = run_shell as u64;
+        first_process.trap_frame.sp = first_process.stack.top().as_u64();
+        // Unmask IRQ. Let the remaining unchanged (`[derive(Default)]`) although it does not make
+        // much sense so far.
+        first_process.trap_frame.pstate = first_process.trap_frame.pstate & !(0b1 << 6);
+        let tf = &*first_process.trap_frame;
+        unsafe {
+            asm!("mov SP, $0
+                  bl context_restore
+                  adr x0, _start # Should be ADR instead of LDR (which just does not work) 
+                  mov SP, x0
+                  mov x0, xzr
+                  mov lr, xzr
+                  eret"
+                :: "r"(tf)
+                :: "volatile");
+        }
     }
 }
 
@@ -51,7 +71,11 @@ struct Scheduler {
 impl Scheduler {
     /// Returns a new `Scheduler` with an empty queue.
     fn new() -> Scheduler {
-        unimplemented!("Scheduler::new()")
+        Scheduler {
+            processes: VecDeque::new(),
+            current: None,
+            last_id: None
+        }
     }
 
     /// Adds a process to the scheduler's queue and returns that process's ID if
