@@ -31,6 +31,19 @@ impl Process {
         })
     }
 
+    /// Initialize the process by filling necessary data into its trap frame.
+    /// 
+    /// - Stack pointer is set automatically.
+    /// - Program counter (in turn ELR_ELn) is set accordingly.
+    /// - IRQ interrupt is unmasked.
+    pub fn init(&mut self, pc: u64) {
+        self.trap_frame.pc = pc;
+        self.trap_frame.sp = self.stack.top().as_u64();
+        // Unmask IRQ. Let the remaining unchanged (`[derive(Default)]`) although it does not make
+        // much sense so far.
+        self.trap_frame.pstate &= !(0b1 << 6);
+    }
+
     /// Returns `true` if this process is ready to be scheduled.
     ///
     /// This functions returns `true` only if one of the following holds:
@@ -64,5 +77,11 @@ impl Process {
             State::Ready => true,
             _ => false,
         }
+    }
+
+    /// Returns `self.trap_frame.tpidr`.
+    #[inline(always)]
+    pub fn id(&self) -> Id {
+        return self.trap_frame.tpidr;
     }
 }

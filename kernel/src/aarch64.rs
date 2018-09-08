@@ -51,3 +51,11 @@ pub fn nop() {
         asm!("nop" :::: "volatile");
     }
 }
+
+/// Wait for interrupt. Executing the instruction causes the CPU to enter into a low-power state
+/// and wait until an interrupt has occurred before executing any other instruction. 
+pub fn wfi() {
+    unsafe {
+        asm!("wfi" :::: "volatile")
+    }
+}

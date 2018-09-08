@@ -46,13 +46,14 @@ pub struct Info {
 /// the trap frame for the exception.
 #[no_mangle]
 pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
-    let mut led = LED::new(16);
-    for _ in 0..1 {
-        led.blink_for(100);
-    }
-    kprintln!("Exception:\n\tInfo: {:?}", info);
+
     match info.kind {
         Kind::Synchronous => {
+            let mut led = LED::new(16);
+            for _ in 0..1 {
+                led.blink_for(100);
+            }
+            kprintln!("Exception:\n\tInfo: {:?}", info);
             let syndrome = Syndrome::from(esr);
             kprintln!("\tESR: {:?}", syndrome);
             if let Syndrome::Brk(_) = syndrome {
@@ -64,11 +65,12 @@ pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
         }
         Kind::Irq => {
             use self::Interrupt::*;
+            //  kprintln!("Exception:\n\tInfo: {:?}", info);
 
             let intctl = Controller::new();
             for int in [Timer1, Timer3, Usb, Gpio0, Gpio1, Gpio2, Gpio3, Uart].iter() {
                 if intctl.is_pending(*int) {
-                    kprintln!("\tInterrupt: {:?}", int);
+                    // kprintln!("\tInterrupt: {:?}", int);
                     handle_irq(*int, tf);
                 }
             }

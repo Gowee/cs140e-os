@@ -1,16 +1,17 @@
 use std::collections::VecDeque;
 
-use pi::{timer, interrupt};
+use pi::{interrupt, timer};
 
+use aarch64;
 use mutex::Mutex;
-use process::{Process, State, Id};
+use process::{Id, Process, State};
 use traps::TrapFrame;
 
+use run_blinky;
 use run_shell;
 
 /// The `tick` time.
-// FIXME: When you're ready, change this to something more reasonable.
-pub const TICK: u32 = 2 * 1000 * 1000;
+pub const TICK: u32 = 10 * 1000;
 
 /// Process scheduler for the entire machine.
 #[derive(Debug)]
@@ -25,7 +26,11 @@ impl GlobalScheduler {
     /// Adds a process to the scheduler's queue and returns that process's ID.
     /// For more details, see the documentation on `Scheduler::add()`.
     pub fn add(&self, process: Process) -> Option<Id> {
-        self.0.lock().as_mut().expect("scheduler uninitialized").add(process)
+        self.0
+            .lock()
+            .as_mut()
+            .expect("scheduler uninitialized")
+            .add(process)
     }
 
     /// Performs a context switch using `tf` by setting the state of the current
@@ -34,24 +39,31 @@ impl GlobalScheduler {
     /// the documentation on `Scheduler::switch()`.
     #[must_use]
     pub fn switch(&self, new_state: State, tf: &mut TrapFrame) -> Option<Id> {
-        self.0.lock().as_mut().expect("scheduler uninitialized").switch(new_state, tf)
+        self.0
+            .lock()
+            .as_mut()
+            .expect("scheduler uninitialized")
+            .switch(new_state, tf)
     }
 
     /// Initializes the scheduler and starts executing processes in user space
     /// using timer interrupt based preemptive scheduling. This method should
     /// not return under normal conditions.
     pub fn start(&self) {
+        *self.0.lock() = Some(Scheduler::new());
+
+        let mut first_process = Process::new().expect("Create the initial process");
+        first_process.init(run_shell as u64);
+        let tf = &*first_process.trap_frame as *const TrapFrame;
+        self.add(first_process);
+
+        let mut second_process = Process::new().expect("Create the second process");
+        second_process.init(run_blinky as u64);
+        self.add(second_process);
+
         interrupt::Controller::new().enable(interrupt::Interrupt::Timer1);
         timer::tick_in(TICK);
 
-        *self.0.lock() = Some(Scheduler::new());
-        let mut first_process = Process::new().expect("Create the initial process");
-        first_process.trap_frame.pc = run_shell as u64;
-        first_process.trap_frame.sp = first_process.stack.top().as_u64();
-        // Unmask IRQ. Let the remaining unchanged (`[derive(Default)]`) although it does not make
-        // much sense so far.
-        first_process.trap_frame.pstate = first_process.trap_frame.pstate & !(0b1 << 6);
-        let tf = &*first_process.trap_frame;
         unsafe {
             asm!("mov SP, $0
                   bl context_restore
@@ -79,8 +91,29 @@ impl Scheduler {
         Scheduler {
             processes: VecDeque::new(),
             current: None,
-            last_id: None
+            last_id: None,
         }
+    }
+
+    /// Generate new id by increasing it by one for `Some`, `0` otherwise. If `last_id` hits
+    /// `Id::max_value`, return `None`.
+    fn inc_id(&mut self) -> Option<Id> {
+        match self.last_id {
+            None => {
+                self.last_id = Some(0);
+            }
+            Some(ref mut id) => {
+                // // WARN: If there are too many processes during the running lifecycle of the OS, it may
+                // //       panic!
+                // *id.checked_add(1);
+                if *id == Id::max_value() {
+                    return None;
+                } else {
+                    *id += 1;
+                }
+            }
+        }
+        self.last_id
     }
 
     /// Adds a process to the scheduler's queue and returns that process's ID if
@@ -92,7 +125,14 @@ impl Scheduler {
     /// It is the caller's responsibility to ensure that the first time `switch`
     /// is called, that process is executing on the CPU.
     fn add(&mut self, mut process: Process) -> Option<Id> {
-        unimplemented!("Scheduler::add()")
+        let id = self.inc_id()?;
+        process.trap_frame.tpidr = id;
+
+        self.processes.push_back(process);
+        if self.current.is_none() {
+            self.current = Some(id);
+        }
+        Some(id)
     }
 
     /// Sets the current process's state to `new_state`, finds the next process
@@ -104,6 +144,41 @@ impl Scheduler {
     /// This method blocks until there is a process to switch to, conserving
     /// energy as much as possible in the interim.
     fn switch(&mut self, new_state: State, tf: &mut TrapFrame) -> Option<Id> {
-        unimplemented!("Scheduler::switch()")
+        // Not needed! The code inside loop will relaunch the current process if no others 
+        // available.
+        /* if self.processes.len() == 1 {
+            return self.current();
+        } */
+        let mut current_process = self.processes.pop_front()?;
+        current_process.trap_frame = Box::new(*tf); // Save runtime trap_frame
+        current_process.state = new_state;
+        let current_process_id = current_process.id();
+        self.processes.push_back(current_process);
+
+        loop {
+            let mut process = self
+                .processes
+                .pop_front()
+                .unwrap_or_else(|| unreachable!("Processes queue can never be empty here."));
+            if process.is_ready() {
+                // If no others available, the current can also be relaunched.
+                *tf = *process.trap_frame;
+                process.state = State::Running;
+                self.current = Some(process.id());
+                self.processes.push_front(process);
+                return self.current;
+            } else if process.id() == current_process_id {
+                // One cycle is ended.
+
+                // <del>
+                // Does wfi really work? `switch` is invoked only in `handle_exception` during the
+                // execution of which all other interrupts are masked automatically by the CPU.
+                // So it seems that there will never be new interrupt raised.
+                // </del>
+                // See question - wfi: interrupts triggered by events
+                aarch64::wfi();
+            }
+            self.processes.push_back(process);
+        }
     }
 }

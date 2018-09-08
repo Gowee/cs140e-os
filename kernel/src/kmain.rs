@@ -68,10 +68,29 @@ pub extern "C" fn kmain() {
 }
 
 #[no_mangle]
-extern fn run_shell() {
-    unsafe { asm!("brk 1" :::: "volatile"); }
-    unsafe { asm!("brk 2" :::: "volatile"); }
+extern "C" fn run_shell() {
+    unsafe {
+        asm!("brk 1" :::: "volatile");
+    }
+    unsafe {
+        asm!("brk 2" :::: "volatile");
+    }
     shell::shell("user0> ");
-    unsafe { asm!("brk 3" :::: "volatile"); }
-    loop { shell::shell("user1> "); }
+    unsafe {
+        asm!("brk 3" :::: "volatile");
+    }
+    loop {
+        shell::shell("user1> ");
+    }
+}
+
+#[no_mangle]
+extern "C" fn run_blinky() {
+    // use console::kprintln;
+
+    let mut led = LED::new(16);
+    loop {
+        // kprintln!("BLINK!");
+        led.blink_for(1000);
+    }
 }
