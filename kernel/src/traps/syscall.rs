@@ -12,6 +12,9 @@ use process::{State, Process};
 /// In addition to the usual status value, this system call returns one
 /// parameter: the approximate true elapsed time from when `sleep` was called to
 /// when `sleep` returned.
+// The text and the skeleton enforce sleep to be u32 -> u32, but I cannot find any reasonableness
+// not to make it be u64 -> u64. So I did what I want. :p But there may be potential
+// incompatibility with future phases / assignments.
 pub fn sleep(ms: u64, tf: &mut TrapFrame) {
     let start = current_time();
     let until = ms * 1000 + start;

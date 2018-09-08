@@ -63,7 +63,7 @@ pub enum Syndrome {
 impl From<u32> for Syndrome {
     fn from(esr: u32) -> Syndrome {
         use self::Syndrome::*;
-        match (esr >> 26) {
+        match esr >> 26 {
             0b000000 => Unknown,
             0b000001 => WfiWfe,
             0b000011 | 0b000101 => McrMrc,

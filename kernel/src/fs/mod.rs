@@ -3,7 +3,7 @@ pub mod sd;
 use std::io;
 use std::path::Path;
 
-use console::kprintln;
+// use console::kprintln;
 pub use fat32::traits;
 use fat32::vfat::{Dir, Entry, File, Shared, VFat};
 

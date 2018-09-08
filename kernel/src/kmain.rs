@@ -69,7 +69,7 @@ pub extern "C" fn kmain() {
 
 #[no_mangle]
 extern "C" fn run_shell() {
-    unsafe {
+/*     unsafe {
         asm!("brk 1" :::: "volatile");
     }
     unsafe {
@@ -81,7 +81,8 @@ extern "C" fn run_shell() {
     }
     loop {
         shell::shell("user1> ");
-    }
+    } */
+    shell::shell("> ");
 }
 
 #[no_mangle]
