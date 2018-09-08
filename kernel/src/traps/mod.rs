@@ -3,7 +3,6 @@ mod syndrome;
 mod syscall;
 mod trap_frame;
 
-
 use pi::interrupt::{Controller, Interrupt};
 
 pub use self::trap_frame::TrapFrame;
@@ -46,7 +45,6 @@ pub struct Info {
 /// the trap frame for the exception.
 #[no_mangle]
 pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
-
     match info.kind {
         Kind::Synchronous => {
             let mut led = LED::new(16);
@@ -56,11 +54,17 @@ pub extern "C" fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
             kprintln!("Exception:\n\tInfo: {:?}", info);
             let syndrome = Syndrome::from(esr);
             kprintln!("\tESR: {:?}", syndrome);
-            if let Syndrome::Brk(_) = syndrome {
-                // kprintln!("Source PC: 0x{:X}", tf.pc);
-                tf.pc += 4;
-                shell("E> ");
-                kprintln!("Exiting the debug shell.");
+            match syndrome {
+                Syndrome::Brk(_) => {
+                    // kprintln!("Source PC: 0x{:X}", tf.pc);
+                    tf.pc += 4;
+                    shell("E> ");
+                    kprintln!("Exiting the debug shell.");
+                }
+                Syndrome::Svc(n) => {
+                    handle_syscall(n, tf);
+                }
+                _ => (),
             }
         }
         Kind::Irq => {

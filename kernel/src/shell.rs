@@ -251,6 +251,37 @@ pub fn shell(prefix: &str) {
                         //CONSOLE.lock().write(&buf).unwrap(); // TODO: No \r is outputed? WTF???
                     }
                 }
+                "sleep" => {
+                    let duration = match command.args.len() {
+                        1 => 1000,
+                        2 => match command.args[1].parse::<u64>() {
+                            Ok(duration) => duration,
+                            Err(e) => {
+                                kprintln!("Error: Failed to parse duration with error {:?}.", e);
+                                break;
+                            }
+                        },
+                        _ => {
+                            kprintln!("Error: Expected exactly 1 argument.");
+                            break;
+                        }
+                    };
+                    let elapsed: u64;
+                    let error: u64;
+                    unsafe { asm!("mov x0, $2
+                          svc 1
+                          mov $0, x0
+                          mov $1, x7"
+                          : "=r"(elapsed), "=r"(error)
+                          : "r"(duration)
+                          : "x0"); }
+                    if error != 0 {
+                        kprintln!("Error: Failed to sleep with error code {}.", error);
+                    }
+                    else {
+                        kprintln!("Sleeped for {} ms.", elapsed);
+                    }
+                }
                 "exit" => {
                     return;
                 }
